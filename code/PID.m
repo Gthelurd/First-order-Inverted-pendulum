@@ -35,12 +35,14 @@ C = pid(Kp,Ki,Kd);
 T1 = feedback(P_pend,C);
 t=0:0.01:4;
 figure;
+subplot(2,1,1);
 impulse(T1,t)
 title('Close-loop impluse Response')
 legend('phi');
-figure;
+% figure;
 T2 = feedback(1,P_pend*C)*P_cart;
 t = 0:0.01:5;
+subplot(2,1,2);
 impulse(T2, t);
 title('Close-loop impluse Response')
 legend('x');

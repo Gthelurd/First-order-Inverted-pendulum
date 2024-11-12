@@ -38,13 +38,15 @@ t = 0:0.01:5;
 % 角度响应
 figure;
 subplot(2, 1, 1);
+% step(T1,t);
 impulse(T1, t);
 ylim([-0.05, 0.05]);
 title('角度响应');
 grid on;
 % 位移响应
 subplot(2, 1, 2);
-impulse(T2, t);
+% impulse(T2, t);
+step(T2,t);
 xlim([0, 1.5]);
 title('位移响应');
 grid on;

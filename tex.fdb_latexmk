@@ -1,12 +1,12 @@
 # Fdb version 3
-["xdvipdfmx"] 1731333771 "tex.xdv" "tex.pdf" "tex" 1731333781
-  "tex.xdv" 1731333771 52496 e3c558a8810abea74adfe9db54c3a79a "xelatex"
+["xdvipdfmx"] 1731401582 "tex.xdv" "tex.pdf" "tex" 1731401583
+  "tex.xdv" 1731401582 70632 bad10de146be2fd5f30aa650bb34b918 "xelatex"
   (generated)
   "tex.pdf"
-["xelatex"] 1731333769 "/home/guran2/code/Latex/First-order-Inverted-pendulum/tex.tex" "tex.xdv" "tex" 1731333781
-  "/dev/null" 1731296396 0 d41d8cd98f00b204e9800998ecf8427e ""
+["xelatex"] 1731401580 "/home/guran2/code/Latex/First-order-Inverted-pendulum/tex.tex" "tex.xdv" "tex" 1731401583
+  "/dev/null" 1731400906 0 d41d8cd98f00b204e9800998ecf8427e ""
   "/etc/texmf/web2c/texmf.cnf" 1727364003 475 c0e671620eb5563b2130f56340a5fde8 ""
-  "/home/guran2/code/Latex/First-order-Inverted-pendulum/tex.tex" 1731333781 16246 ea93fb3078f25a328c599be9a569543f ""
+  "/home/guran2/code/Latex/First-order-Inverted-pendulum/tex.tex" 1731401580 17423 055d7bb38789a2351693920a66906aa4 ""
   "/usr/share/texlive/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
   "/usr/share/texlive/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmbsy5.tfm" 1246382020 1120 1e8878807317373affa7f7bba4cf2f6a ""
@@ -198,11 +198,11 @@
   "/var/lib/texmf/web2c/xetex/xelatex.fmt" 1727365156 4646884 cdb0e9934a36c262a3db2f8737902f70 ""
   "imgs/figure1.png" 1731303917 73204 810a4936ec560f180a514b1bb611c890 ""
   "imgs/figure2.png" 1731304546 102068 049a8cadb2c37568bc713c5d0ca56e54 ""
-  "tex.aux" 1731333771 1312 9651ad6986d145a8df1d68cdaf6a9684 "xelatex"
-  "tex.out" 1731333771 0 d41d8cd98f00b204e9800998ecf8427e "xelatex"
-  "tex.tex" 1731333781 16246 ea93fb3078f25a328c599be9a569543f ""
+  "tex.aux" 1731401582 1312 9651ad6986d145a8df1d68cdaf6a9684 "xelatex"
+  "tex.out" 1731401582 0 d41d8cd98f00b204e9800998ecf8427e "xelatex"
+  "tex.tex" 1731401580 17423 055d7bb38789a2351693920a66906aa4 ""
   (generated)
-  "tex.out"
-  "tex.xdv"
-  "tex.log"
   "tex.aux"
+  "tex.xdv"
+  "tex.out"
+  "tex.log"
