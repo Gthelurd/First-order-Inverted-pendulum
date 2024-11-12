@@ -40,6 +40,13 @@
   tabsize=3
 }
 \usetikzlibrary{math}
+\usetikzlibrary{shapes.geometric, arrows}
+\usetikzlibrary{matrix}
+\tikzstyle{block} = [draw, rectangle, minimum height=2em, minimum width=4em]
+\tikzstyle{sum} = [draw, circle, node distance=1cm]
+\tikzstyle{input} = [coordinate]
+\tikzstyle{output} = [coordinate]
+\tikzstyle{pinstyle} = [pin edge={to-,thin,black}]
 
 \begin{document}
 \section*{系统建模问题背景}
@@ -377,7 +384,7 @@ y=CX+D\hat{u}=\begin{bmatrix}
 
 LQR控制考虑最佳控制向量的矩阵$K$:
 \[
-u=-KX
+\hat{u}=u-KX
 \]
 其中$K$为增益矩阵，$X$为状态向量。
 
@@ -387,18 +394,34 @@ J=\frac{1}{2}\int_{0}^{T}(X^TQX+u^TRu)dt
 \]
 此时不妨选择$Q=I,R=I$，使用matlab代码求解得到增益矩阵$K$:
 \begin{lstlisting}[language=matlab,numbers=none]
-A = [0, 1, 0, 0;
-    41.63, 0, 0, 0;
-    0, 0, 0, 1;
-    -0.6099, 0, 0, 0];
-B = [0;
-    -2.7584;
-    0;
-    0.6898];
+% 倒立摆系统参数
+M = 1.42;     % 小车质量
+m = 0.12;     % 摆球质量
+l = 0.188;    % 摆杆长度
+I = 0.0014;     % 摆球转动惯量
+g = 9.8;      % 重力加速度9.8m/s^2
+q = (M+m)*(I+m*l^2)-(m*l)^2;
+p = I*(M+m)+(M*m*l^2);
+% 倒立摆系统状态空间矩阵定义
+A = [0               1 0 0
+    (M+m)*m*g*l/(I*(M+m)+(M*m*l^2))    0 0 0
+    0                0 0 1
+    -m^2*g*l^2 /(I*(M+m)+(M*m*l^2))          0 0 0];
+B = [0 -m*l/(I*(M+m)+(M*m*l^2)) 0 (I+m*l^2)/(I*(M+m)+(M*m*l^2))]';
 Q=eye(4);
 R=eye(1);
-[K, S, E] = lqr(A, B, Q, R);
+K=lqr(A,B,Q,R);
 \end{lstlisting}
+此时可以输出得到$k=[-36.9690   ,-5.8463   ,-1.0000   ,-2.3376]$。
+
+那么我们拥有了这个k，就可以搭建LQR控制器了，首先考虑如下理论模型，我们注意到，
+在LQR控制器中，反馈K到输入u中，然后在乘以B，与A反馈相加之后。
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{./imgs/LQR_OPTi.png}
+    \caption{LQR控制器}
+\end{figure}
+
 \subsection*{PID控制}
 进行laplace变换,同时假设$\theta,\dot{\theta}$很小,根据上述推导不难有如下式子:
 \[\left\{\begin{matrix}
@@ -421,8 +444,117 @@ P_\text{pend}(s)=\frac{\Phi(s)}{U(s)}=\frac{mls}{((M+m)(I+ml^2)-(ml)^2)s^3+b(I+m
 P_\text{cart}(s)=\frac{X(s)}{U(s)}=\frac{(I+ml^2)s^2-mgl}{((M+m)(I+ml^2)-(ml^2))s^4+b(I+ml^2)s^3-(M+m)mgls^2-bmgls}
 \]
 
+当然，我们还有另外一种传递函数:
+\[
+\left\{
+    \begin{matrix}
+    \ddot{x}=\frac{(I+ml^2)u+ml(I+ml^2)\dot{\theta}^2\sin\theta-m^2l^2g\sin\theta\cos\theta}{(I+ml^2)(M+m)-m^2l^2\cos^2\theta}\\
+    \ddot{\theta}=\frac{mlu\cos\theta+m^2l^2\dot{\theta}^2\sin\theta\cos\theta-(M+m)mlg\sin\theta}{m^2l^2\cos^2\theta-(I+ml^2)(M+m)}
+    \end{matrix}
+\right.
+\]
+这个时候带入$\theta\to 0$求解，有：
+\[
+\left\{
+    \begin{matrix}
+    \ddot{x}=\frac{0.0022u-0.005\theta}{0.0082}\\
+    \ddot{\theta}=\frac{0.0226u-0.3405\theta}{-0.0082}
+    \end{matrix}
+\right.
+\]
+所以在平衡点附近的参数就线性化为:
+\[
+\left\{
+    \begin{matrix}
+    \ddot{x}=0.2683u-0.6098\theta\\
+    \ddot{\theta}=-2.7561u+41.5244\theta
+    \end{matrix}
+\right.
+\]
+然后laplace变换，得到:
+\[
+\left\{
+    \begin{matrix}
+    X(s)=\frac{-0.0973s^2+3.4325}{s^2}\Phi(s)\\
+    \Phi(s)=\frac{-2.7561}{s^2-41.5244}U(s)
+    \end{matrix}
+\right.
+\]
+我们根据这个可以画出来系统框图如下:
+\begin{center}
+    \begin{tikzpicture}[auto, node distance=2cm, >=latex']
+        % 定义输入节点
+        \node [input, name=input] {};
+        % 定义第一个传递函数
+        \node [block, right of=input] (G1) {$\frac{-0.0973s^2 + 3.4325}{s^2}$};
+        % 定义第二个传递函数
+        \node [block, right of=G1, node distance=3cm] (G2) {$\frac{-2.7561}{s^2 - 41.5244}$};
+        % 定义输出节点
+        \node [output, right of=G2] (output) {};
+        % 连接各个节点
+        \draw [->] (input) -- node {$U(s)$} (G1);
+        \draw [->] (G1) -- node {$\Phi(s)$} (G2);
+        \draw [->] (G2) -- node [name=X] {$X(s)$} (output);
+        % 添加反馈路径
+        % \draw [->] (G2.south) -- ++(0,-1.5cm) -| node [pos=0.99] {$-$} (G1.south);
+    \end{tikzpicture}
+\end{center}
 这样关于角度和关于小车位移的传递函数就有了，可以进行pid控制仿真了。
+\begin{lstlisting}[language=matlab,numbers=none]
+%Modeling
+%%Transfer Function
+mCart = 1.42;  
+mPend = 0.12;
+b = 0.1;     % 阻尼系数
+I = 0.014;     % 转动惯量
+g = 9.8;
+L = 0.188;
+q = (mCart+mPend)*(I+mPend*L^2)-(mPend*L)^2;
+s = tf('s');
+P_cart = (((I+mPend*L^2)/q)*s^2 - (mPend*g*L/q))/(s^4 + (b*(I + mPend*L^2))*s^3/q - ((mCart + mPend)*mPend*g*L)*s^2/q - b*mPend*g*L*s/q);
+P_pend = (mPend*L*s/q)/(s^3 + (b*(I + mPend*L^2))*s^2/q - ((mCart + mPend)*mPend*g*L)*s/q - b*mPend*g*L/q);
+sys_tf = [P_cart ; P_pend]
+inputs = {'u'};
+outputs = {'x'; 'phi'};
+set(sys_tf,'InputName',inputs)
+set(sys_tf,'OutputName',outputs)
+% PID环节
+Kp = 100;
+Ki = 1;
+Kd = 30;
+C = pid(Kp,Ki,Kd);
+T1 = feedback(P_pend,C);
+T2 = feedback(1,P_pend*C)*P_cart;
+\end{lstlisting}
+
+我们现在有输出如下:
+\[
+\begin{matrix}
+P_\text{cart} =\frac{1.388 \times 10^{-5} s^2 - 0.0001682}{2.098 \times 10^{-5} s^4 + 1.388 \times 10^{-6} s^3 - 0.000259 s^2 - 1.682 \times 10^{-5} s} & \text{从输入U(s)到输出1X(s)} \\
+P_\text{pend} =\frac{1.716 \times 10^{-5} s}{2.098 \times 10^{-5} s^3 + 1.388 \times 10^{-6} s^2 - 0.000259 s - 1.682 \times 10^{-5}} & \text{从输入U(s)到输出2}\Phi(S)
+\end{matrix}
+\]
+
+随后我们转化:
+\[
+\begin{matrix}
+\text{T1} =
+\frac{1.716 \times 10^{-5} s^2}{2.098 \times 10^{-5} s^4 + 0.0005163 s^3 + 0.001457 s^2 + 3.433 \times 10^{-7} s}
+\\
+\text{T2} =
+\frac{2.912 \times 10^{-10} s^6 + 1.926 \times 10^{-11} s^5 - 7.125 \times 10^{-9} s^4 - 4.669 \times 10^{-10} s^3 + 4.357 \times 10^{-8} s^2 + 2.829 \times 10^{-9} s}{4.404 \times 10^{-10} s^8 + 1.086 \times 10^{-8} s^7 + 2.586 \times 10^{-8} s^6 - 1.321 \times 10^{-7} s^5 - 3.862 \times 10^{-7} s^4 - 2.46 \times 10^{-8} s^3 - 5.774 \times 10^{-12} s^2}
+\end{matrix}
+\]
+这个时候我们可以直接运算T1,T2的脉冲响应即可。
+
+而同时我们也有这样的PID控制器框图如下：
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{./imgs/PID_OPTi.png}
+    \caption{双PID控制器}
+\end{figure}
 \section*{Matlab代码与Simulink仿真测试}
+\subsection*{LQR控制}
 根据上述操作，我们已经大概知道了怎么计算，现在我们进行matlab仿真测试。
 \begin{lstlisting}[language=matlab,numbers=none]
 % 倒立摆系统参数
@@ -445,7 +577,8 @@ D = 0;
 % 倒立摆系统状态空间模型
 G = ss(A, B, C, D)
 \end{lstlisting}
-我们有输出如下，可以看出，尽管我们定义了阻尼系数b，但是这道题这样给出来的状态矩阵就是没有计算阻尼系数的形式:
+我们有输出如下，可以看出，尽管我们定义了阻尼系数b，
+但是这道题这样给出来的状态矩阵就是没有计算阻尼系数的形式，但是与题目所给形式完全一致:
 \begin{lstlisting}[numbers=none]
 G =
   A = 
@@ -469,6 +602,123 @@ G =
    y1   0 
    y2   0
 连续时间状态空间模型。
+\end{lstlisting}
+那么根据之前讨论过的(主要参考控制环节-LQR控制)，这里主要使用了图2中的理论系统形式,我们可以搭出LQR控制器的simulink文件:
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{imgs/simulink_lqr.png}
+    \caption{simulink仿真文件}    
+\end{figure}
+\subsubsection*{完整代码}
+\begin{lstlisting}[language=matlab,numbers=none]
+% 定义状态矩阵 A 和控制矩阵 B 观测矩阵 C 和输入矩阵 D
+A = [0, 1, 0, 0;
+     41.63, 0, 0, 0;
+     0, 0, 0, 1;
+     -0.6099, 0, 0, 0];
+B = [0;
+     -2.7584;
+     0;
+     0.6898];
+C = [1, 0, 0, 0;
+     0, 0, 1, 0];
+D = [0;
+     0];
+G = ss(A, B, C, D);
+% 定义权重矩阵 Q 和 R
+Q = eye(4);  % 状态权重矩阵，这里使用单位矩阵
+R = 1;       % 控制权重矩阵，这里使用 1
+[K, S, E] = lqr(A, B, Q, R);
+B
+A
+K
+A_cl = A - B * K;
+B_cl = B;
+C_cl = C;
+D_cl = D;
+Gclose = ss(A_cl, B_cl, C_cl, D_cl);
+
+% 计算并绘制阶跃响应
+t = 0:0.01:10;
+[y, t, x] = step(Gclose, t);
+
+figure;
+% 摆角与角速度响应
+subplot(2, 1, 1);
+plot(t, x(:, 1), 'b-', 'LineWidth', 2);
+hold on;
+plot(t, x(:, 2), 'r--', 'LineWidth', 2);
+grid on;
+xlabel('time(s)', 'FontSize', 20);
+ylabel('{\theta and \dot \theta}', 'FontSize', 20);
+title('摆角与角速度响应', 'FontSize', 25);
+legend('摆角', '角速度');
+% 位移与速度响应
+subplot(2, 1, 2);
+plot(t, x(:, 3), 'g-', 'LineWidth', 2);
+hold on;
+plot(t, x(:, 4), 'm--', 'LineWidth', 2);
+grid on;
+xlabel('time(s)', 'FontSize', 20);
+ylabel('{x and \dot x}', 'FontSize', 20);
+title('位移与速度响应', 'FontSize', 25);
+legend('位移', '速度');
+
+set(gcf, 'Position', [100, 100, 800, 600]);
+\end{lstlisting}
+\subsection*{PID控制}
+那么根据之前讨论过的(主要参考)，我们可以搭出PID控制器的simulink文件:
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{imgs/simulink_pid.png}
+    \caption{simulink仿真文件}    
+\end{figure}
+\subsubsection*{完整代码}
+\begin{lstlisting}[language=matlab,numbers=none]
+%Modeling
+%%Transfer Function
+mCart = 1.42;  
+mPend = 0.12;
+b = 0.1;     % 阻尼系数
+I = 0.014;     % 转动惯量
+g = 9.8;
+L = 0.188;
+q = (mCart+mPend)*(I+mPend*L^2)-(mPend*L)^2;
+s = tf('s');
+P_cart = (((I+mPend*L^2)/q)*s^2 - (mPend*g*L/q))/(s^4 + (b*(I + mPend*L^2))*s^3/q - ((mCart + mPend)*mPend*g*L)*s^2/q - b*mPend*g*L*s/q);
+P_pend = (mPend*L*s/q)/(s^3 + (b*(I + mPend*L^2))*s^2/q - ((mCart + mPend)*mPend*g*L)*s/q - b*mPend*g*L/q);
+sys_tf = [P_cart ; P_pend]
+inputs = {'u'};
+outputs = {'x'; 'phi'};
+set(sys_tf,'InputName',inputs)
+set(sys_tf,'OutputName',outputs)
+t = 0:0.05:5;
+u = ones(size(t));
+[y,t] = lsim(sys_tf,u,t);
+figure ;
+plot(t,y) ;
+title('Open-Loop Step Response') ;
+% axis([0 3 0 50]) ;
+legend('x','phi');
+% PID环节
+Kp = 100;
+Ki = 1;
+Kd = 30;
+C = pid(Kp,Ki,Kd);
+T1 = feedback(P_pend,C);
+t=0:0.01:4;
+figure;
+subplot(2,1,1);
+impulse(T1,t)
+title('Close-loop impluse Response')
+legend('phi');
+% figure;
+T2 = feedback(1,P_pend*C)*P_cart;
+t = 0:0.01:5;
+subplot(2,1,2);
+impulse(T2, t);
+title('Close-loop impluse Response')
+legend('x');
 \end{lstlisting}
 \end{document}
 
