@@ -373,7 +373,7 @@ y=CX+D\hat{u}=\begin{bmatrix}
 \end{bmatrix}
 \]
 
-其中,$p=I(M+m)+Mml^2$，当然还有$q=(M+m)(I+ml^2)-(ml)^2$，在后面pid调节的时候可以使用。
+其中,$p=I(M+m)+Mml^2$，当然还有它还有另一种形式$q=(M+m)(I+ml^2)-(ml)^2$，在后面pid调节的时候可以使用。
 \section*{控制环节}
 \subsection*{LQR控制}
 已知系统状态空间模型:
@@ -433,72 +433,20 @@ K=lqr(A,B,Q,R);
 有初始状态为0，而且$\sin\theta=\theta,\cos\theta=1,\dot{\theta}=0$:
 
 \[
-(I+ml^2)\Phi(s)s^2-mgl\Phi(s)=mlX(s)s^2-ml\Phi(s)s^2+bX(s)s=U(s)
+\left\{\begin{matrix}
+(M+m)s^2X(s)+ml^2s^2\Phi(s)+bsX(s)=U(s)\\
+mls^2X(s)=[-(I+ml^2)s^2+mgl]\Phi(s)    
+\end{matrix}
+\right.
 \]
 
-那么可以给出两种传递函数:
+那么可以给出这种传递函数，其中$q = (M + m) \left( I + m l^2 \right) - (m l)^2$:
 \[
-P_\text{pend}(s)=\frac{\Phi(s)}{U(s)}=\frac{mls}{((M+m)(I+ml^2)-(ml)^2)s^3+b(I+ml^2)s^2-(M+m)mgls-bmgl}
+P_\text{pend}(s)=\frac{\Phi(s)}{U(s)}=\frac{mls^2}{-qs^4-b(I+ml^2)s^3+(M+m)mgls^2+bmgls}
 \]
 \[
-P_\text{cart}(s)=\frac{X(s)}{U(s)}=\frac{(I+ml^2)s^2-mgl}{((M+m)(I+ml^2)-(ml^2))s^4+b(I+ml^2)s^3-(M+m)mgls^2-bmgls}
+P_\text{cart}(s)=\frac{X(s)}{U(s)}=\frac{-(I+ml^2)s^2+mgl}{-qs^4-b(I+ml^2)s^3+(M+m)mgls^2+bmgls}
 \]
-
-当然，我们还有另外一种传递函数:
-\[
-\left\{
-    \begin{matrix}
-    \ddot{x}=\frac{(I+ml^2)u+ml(I+ml^2)\dot{\theta}^2\sin\theta-m^2l^2g\sin\theta\cos\theta}{(I+ml^2)(M+m)-m^2l^2\cos^2\theta}\\
-    \ddot{\theta}=\frac{mlu\cos\theta+m^2l^2\dot{\theta}^2\sin\theta\cos\theta-(M+m)mlg\sin\theta}{m^2l^2\cos^2\theta-(I+ml^2)(M+m)}
-    \end{matrix}
-\right.
-\]
-这个时候带入$\theta\to 0$求解，有：
-\[
-\left\{
-    \begin{matrix}
-    \ddot{x}=\frac{0.0022u-0.005\theta}{0.0082}\\
-    \ddot{\theta}=\frac{0.0226u-0.3405\theta}{-0.0082}
-    \end{matrix}
-\right.
-\]
-所以在平衡点附近的参数就线性化为:
-\[
-\left\{
-    \begin{matrix}
-    \ddot{x}=0.2683u-0.6098\theta\\
-    \ddot{\theta}=-2.7561u+41.5244\theta
-    \end{matrix}
-\right.
-\]
-然后laplace变换，得到:
-\[
-\left\{
-    \begin{matrix}
-    X(s)=\frac{-0.0973s^2+3.4325}{s^2}\Phi(s)\\
-    \Phi(s)=\frac{-2.7561}{s^2-41.5244}U(s)
-    \end{matrix}
-\right.
-\]
-我们根据这个可以画出来系统框图如下:
-\begin{center}
-    \begin{tikzpicture}[auto, node distance=2cm, >=latex']
-        % 定义输入节点
-        \node [input, name=input] {};
-        % 定义第一个传递函数
-        \node [block, right of=input] (G1) {$\frac{-0.0973s^2 + 3.4325}{s^2}$};
-        % 定义第二个传递函数
-        \node [block, right of=G1, node distance=3cm] (G2) {$\frac{-2.7561}{s^2 - 41.5244}$};
-        % 定义输出节点
-        \node [output, right of=G2] (output) {};
-        % 连接各个节点
-        \draw [->] (input) -- node {$U(s)$} (G1);
-        \draw [->] (G1) -- node {$\Phi(s)$} (G2);
-        \draw [->] (G2) -- node [name=X] {$X(s)$} (output);
-        % 添加反馈路径
-        % \draw [->] (G2.south) -- ++(0,-1.5cm) -| node [pos=0.99] {$-$} (G1.south);
-    \end{tikzpicture}
-\end{center}
 这样关于角度和关于小车位移的传递函数就有了，可以进行pid控制仿真了。
 \begin{lstlisting}[language=matlab,numbers=none]
 %Modeling
@@ -530,8 +478,15 @@ T2 = feedback(1,P_pend*C)*P_cart;
 我们现在有输出如下:
 \[
 \begin{matrix}
-P_\text{cart} =\frac{1.388 \times 10^{-5} s^2 - 0.0001682}{2.098 \times 10^{-5} s^4 + 1.388 \times 10^{-6} s^3 - 0.000259 s^2 - 1.682 \times 10^{-5} s} & \text{从输入U(s)到输出1X(s)} \\
-P_\text{pend} =\frac{1.716 \times 10^{-5} s}{2.098 \times 10^{-5} s^3 + 1.388 \times 10^{-6} s^2 - 0.000259 s - 1.682 \times 10^{-5}} & \text{从输入U(s)到输出2}\Phi(S)
+P_\text{cart} =\frac{0.01824 s^2 - 0.2211}{0.02758 s^4 + 0.001824 s^3 - 0.3405 s^2 - 0.02211 s} & \text{从输入U(s)到输出1X(s)} \\
+P_\text{pend} =\frac{-0.02256 s^2}{0.02758 s^4 + 0.001824 s^3 - 0.3405 s^2 - 0.02211 s} & \text{从输入U(s)到输出2}\Phi(S)
+\end{matrix}
+\]
+如果我们不计算阻尼系数$b=0.1$的话,输出如下:
+\[
+\begin{matrix}
+P_\text{cart} =\frac{0.01824 s^2 - 0.2211}{0.02758 s^4 - 0.3405 s^2} & \text{从输入U(s)到输出1X(s)} \\
+P_\text{pend} =\frac{-0.02256 s^2}{0.02758 s^4 - 0.3405 s^2} & \text{从输入U(s)到输出2}\Phi(S)
 \end{matrix}
 \]
 
@@ -546,6 +501,106 @@ P_\text{pend} =\frac{1.716 \times 10^{-5} s}{2.098 \times 10^{-5} s^3 + 1.388 \t
 \end{matrix}
 \]
 这个时候我们可以直接运算T1,T2的脉冲响应即可。
+
+当然，我们还有另外一种传递函数:
+\[
+\left\{
+    \begin{matrix}
+    \ddot{x}=\frac{(I+ml^2)u+ml(I+ml^2)\dot{\theta}^2\sin\theta-m^2l^2g\sin\theta\cos\theta}{(I+ml^2)(M+m)-m^2l^2\cos^2\theta}\\
+    \ddot{\theta}=\frac{mlu\cos\theta+m^2l^2\dot{\theta}^2\sin\theta\cos\theta-(M+m)mlg\sin\theta}{m^2l^2\cos^2\theta-(I+ml^2)(M+m)}
+    \end{matrix}
+\right.
+\]
+这个时候带入$\theta\to 0$求解，有：
+\[
+\left\{
+    \begin{matrix}
+    \ddot{x}=\frac{(I+ml^2)u-m^2l^2g\theta}{(I+ml^2)(M+m)-m^2l^2}\\
+    \ddot{\theta}=\frac{-mlu+(M+m)mgl\theta}{(I+ml^2)(M+m)-m^2l^2}
+    \end{matrix}
+\right.
+\]
+这个进行求解，可以有laplace变换如下:
+\[
+\left\{
+\begin{matrix}
+    qs^2X(s)=(I+ml^2)U(s)+m^2l^2g\Phi(s)\\
+    qs^2\Phi(s)=-mlU(s)+(M+m)mgl\Phi(s)
+\end{matrix}
+\right.
+\]
+也就是解下列方程:
+\[
+\left\{
+\begin{matrix}
+    X(s)= \frac{\frac{-m^3l^3g}{-qs^2+(M+m)mgl}+(I+ml^2)}{qs^2}U(s)=\frac{(I+ml^2)s^2-mgl}{qs^4 -(M+m)mgls^2}U(s)\\
+    \Phi(s)=\frac{-ml}{qs^2-(M+m)mgl}U(s)
+\end{matrix}
+\right.
+\]
+可以得出传递函数为:
+\[
+P_\text{pend}(s)=\frac{\Phi(s)}{U(s)}=\frac{ml}{-qs^2+(M+m)mgl}
+\]
+\[
+P_\text{cart}(s)=\frac{X(s)}{U(s)}=\frac{(I+ml^2)s^2-mgl}{qs^4-(M+m)mgls^2}
+\]
+可以与上面进行检验，我们这里也就是$b=0$的情况，
+我们根据这个可以画出来系统框图如下:
+\begin{center}
+    \begin{tikzpicture}[auto, node distance=2cm, >=latex']
+        % 定义输入节点
+        \node [input, name=input] {};
+        % 定义第一个传递函数
+        \node [block, right of=input] (G1) {$G_1=\frac{\Phi(s)}{F(s)}$};
+        % 定义第二个传递函数
+        \node [block, right of=G1, node distance=3cm] (G2) {$G_2=\frac{X(s)}{\Phi(s)}$};
+        % 定义输出节点
+        \node [output, right of=G2] (output) {};
+        % 连接各个节点
+        \draw [->] (input) -- node {$U(s)$} (G1);
+        \draw [->] (G1) -- node {$\Phi(s)$} (G2);
+        \draw [->] (G2) -- node [name=X] {$X(s)$} (output);
+        % 添加反馈路径
+        % \draw [->] (G2.south) -- ++(0,-1.5cm) -| node [pos=0.99] {$-$} (G1.south);
+    \end{tikzpicture}
+\end{center}
+那么我们有:
+\[
+\left\{
+\begin{matrix}
+    G_1(s)=\frac{\Phi(s)}{U(s)}=\frac{-ml}{qs^2-(M+m)mgl}\\
+    G_2(s)=\frac{X(s)}{\Phi(s)}=\frac{(I+ml^2)s^2-mgl}{-mls^2}
+\end{matrix}
+\right.
+\]
+
+\begin{lstlisting}[language=matlab,numbers=none]
+% 定义系统参数
+M = 1.42;     % 小车质量
+m = 0.12;     % 摆球质量
+l = 0.188;    % 摆杆长度
+I = 0.0014;   % 摆球转动惯量
+g = 9.8;      % 重力加速度
+q = (M + m) * (I + m * l^2) - (m * l)^2;
+p = I * (M + m) + (M * m * l^2);
+s = tf('s');
+
+% 定义传递函数 G1 和 G2
+G1 = (-m * l) / (q * s^2 - (M + m) * m * g * l);
+G2 = ((I + m * l^2) * s^2 - m * g * l) / (-m * l * s^2);
+
+\end{lstlisting}
+
+代入倒立摆参数，我们可以得到:
+\[
+\left\{
+\begin{matrix}
+    G_1(s)=\frac{\Phi(s)}{U(s)}=\frac{-0.02256}{0.008179 s^2 - 0.3405}\\
+    G_2(s)=\frac{X(s)}{\Phi(s)}=\frac{-0.005641 s^2 + 0.2211}{0.02256 s^2}
+\end{matrix}
+\right.
+\]
 
 而同时我们也有这样的PID控制器框图如下：
 \begin{figure}[htbp]
